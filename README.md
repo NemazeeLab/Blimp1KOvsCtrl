@@ -1,5 +1,5 @@
 # Blimp1KOvsCtrl
-# ScRNAseq 
+# ScRNAseq set-up
 dataset_loc <- '/Users/Li/Desktop/R_scrna_seq' 
 ids <- c("ctl_sample_feature_bc_matrix","blimp_sample_feature_bc_matrix") 
 ctl.data <- Read10X_h5(file.path(dataset_loc, ids[1], "ctl_sample_feature_bc_matrix.h5"), use.names = T)
@@ -57,7 +57,7 @@ dim(data.filt)
 umap = cbind("Barcode" = rownames(Embeddings(object = data.filt, reduction = "umap")), Embeddings(object = data.filt, reduction = "umap"))
 write.table(umap, file="/Users/Li/Desktop/R_scrna_seq/results/seurat_BlimpVSctl.csv", sep = ",", quote = F, row.names = F, col.names = T)
 save(data.filt, umap, file = "seurat_BlimpVSctl.Rdata")
-### to make Figure Figure S3a-c & Figure 3a-f
+### to make Figure Figure S3a-c
 load(file = "seurat_BlimpVSctl.Rdata")
 batch_ids <- data.frame(barcode = rownames(data.filt@meta.data), 
                         batch_id = sample(0:2, NROW(data.filt@meta.data), replace = TRUE),
@@ -89,8 +89,7 @@ genes_to_check_Top = c('Cd79a','Ighd','Ms4a1','Mzb1','Jchain','Tnfrsf17','Fcgr1'
                        'Tcrg-V6','Cd163l1','Tnfrsf9','Nkg7','Ccl5','Styk1','Kif13b','Mki67','Top2a')
 DotPlot(data.filt, group.by = 'seurat_clusters',split.by = "orig.ident",cols = c("red","blue"),
         features = unique(genes_to_check_Top)) + RotatedAxis()
-#to make Figure S3a-c
-
+### to make Figure 3a-f
 #Subclustering of B cells 
 B_sub_m = data.filt[,data.filt@meta.data$seurat_clusters %in% c(0,9)]
 sce.m = B_sub_m
@@ -104,15 +103,15 @@ sce.m <- FindClusters(sce.m, resolution = 1 )
 head(Idents(sce.m), 2)
 table(sce.m$seurat_clusters) 
 sce.m <- RunUMAP(sce.m, dims = 1:6)
-DimPlot(sce.m, reduction = 'umap')
-DimPlot(sce. m, group.by = "orig.ident") + NoAxes()
+DimPlot(sce.m, reduction = 'umap') #Figure 3a
+DimPlot(sce. m, group.by = "orig.ident") + NoAxes() #Figure 3b
 > table(sce.m$orig.ident)
 table(Idents(sce.m))
-> table(Idents(sce.m),sce.m$orig.ident)
+> table(Idents(sce.m),sce.m$orig.ident) #Figure 3c
 genes_to_check_fomzb = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1')
 DotPlot(sce.m, group.by = 'seurat_clusters',
         features = unique(genes_to_check_fomzb)) + RotatedAxis()
-FeaturePlot(sce.m, features = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1'))
+FeaturePlot(sce.m, features = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1')) # Figure 3d
 
 df.sub.m.markers <- FindAllMarkers(object = sce.m, min.pct = 0.25, thresh.use = 0.25)
 write.table(df.sub.m.markers, file="/Users/Li/Desktop/R_scrna_seq/results/seurat_df_sub_m_markers_BlimpVSctl.csv", sep = ",", quote = F, row.names = F, col.names = T)
@@ -228,7 +227,7 @@ p7 <- p6+
     legend.justification = c(1,0),
     legend.text = element_text(size = 15)
   )
-p7
+p7 #Figure 3e
 genes_to_check_Top = c('Fcer2a','Vpreb3','H3f3a','Tmem108','Ighd','Il4i1','Junb','Rpl35a','Rps29','Limd2',
                        'Rps15a', 'Rps16','Rps7','Rpl9','Ebf1','Rpl37a','Rps27','Fth1','Dusp2',
                        'S100a6','Apoe','Psap','Napsa','Nfatc1','Ptprj','Ms4a1','Cd9','Ighm','Cyp4f18',
@@ -236,9 +235,9 @@ genes_to_check_Top = c('Fcer2a','Vpreb3','H3f3a','Tmem108','Ighd','Il4i1','Junb'
                        'Tnfrsf17','Eaf2','Jchain','Derl3','Cd28','Plpp5','Sdc1','Tent5c','Ccr10','Tigit',
                        'Ifi214','Ifit3','Ifit2','Usp18','Irf7','Ifi208','Oasl2','Irgm1','Oasl1','Ifi47','Tor3a')
 DotPlot(sce.m, group.by = 'seurat_clusters',
-        features = unique(genes_to_check_Top)) + RotatedAxis() + theme(axis.text.x = setting) + scale_color_gradient2(low = "blue", mid = "white", high = "red")
+        features = unique(genes_to_check_Top)) + RotatedAxis() + theme(axis.text.x = setting) + scale_color_gradient2(low = "blue", mid = "white", high = "red") # Figure 3f
 
-### VDJ combined with scRNAseq
+### VDJ combined with scRNAseq to make Figure 4a,b & Figure S4a-d
 CTL <- read.csv("/Users/Li/Desktop/VDJ/CTRL_03idCTRLBCELLtyVDJdt111522/CTL_filtered_contig_annotations.csv")
 BLIMP1 <- read.csv("/Users/Li/Desktop/VDJ/BLIMP_01idBLIMPBCELLtyVDJdt111122/BLIMP_filtered_contig_annotations.csv")
 
