@@ -1,67 +1,42 @@
 # Blimp1KOvsCtrl
-# Set-up pathway
+# ScRNAseq 
 dataset_loc <- '/Users/Li/Desktop/R_scrna_seq' 
 ids <- c("ctl_sample_feature_bc_matrix","blimp_sample_feature_bc_matrix") 
-
-## Read10X_h5
 ctl.data <- Read10X_h5(file.path(dataset_loc, ids[1], "ctl_sample_feature_bc_matrix.h5"), use.names = T)
 blimp1.data <- Read10X_h5(file.path(dataset_loc, ids[2], "blimp_sample_feature_bc_matrix.h5"), use.names = T)
-
-# Set up objects
 sdata.ctl <- CreateSeuratObject(counts = ctl.data, project = "Til_B_CTRL", min.cells = 3)
 sdata.blimp1 <- CreateSeuratObject(counts = blimp1.data, project = "Til_B_BLIMP1", min.cells = 3)
-# add metadata
 sdata.ctl$type = "CTL"
 sdata.blimp1$type = "BLIMP1"
-# Merge datasets into one single seurat object
 alldata <- merge(sdata.ctl, sdata.blimp1 , add.cell.ids = c("CTL" , "BLIMP1"))
-
-# run garbage collect to free up memory
 gc()
-
-# Calculate QC-Way1: Doing it using Seurat function
 alldata <- PercentageFeatureSet(alldata, "^MT-", col.name = "percent_mito")
 alldata <- PercentageFeatureSet(alldata, "^RP[SL]", col.name = "percent_ribo")
 alldata <- PercentageFeatureSet(alldata, "^HB[^(P)]", col.name = "percent_hb")
 alldata <- PercentageFeatureSet(alldata, "PECAM1|PF4", col.name = "percent_plat")
-
-#Plot QC
 feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo", "percent_hb")
 VlnPlot(alldata, group.by = "orig.ident", features = feats, pt.size = 0.1, ncol = 3) + NoLegend()
 FeatureScatter(alldata, "nCount_RNA", "nFeature_RNA", group.by = "orig.ident", pt.size = 0.5)
-
-#Detection-based filtering
 selected_c <- WhichCells(alldata, expression = nFeature_RNA > 200)
 selected_f <- rownames(alldata)[Matrix::rowSums(alldata) > 3]
-
 data.filt <- subset(alldata, features = selected_f, cells = selected_c)
 dim(data.filt)
-
-#Mito/Ribo filtering
 selected_mito <- WhichCells(data.filt, expression = percent_mito < 0.2)
-
-# and subset the object to only keep those cells
 data.filt <- subset(data.filt, cells = selected_mito)
 
 dim(data.filt)
 
 table(data.filt$orig.ident)
-
-#filtered Plot QC
 feats <- c("nFeature_RNA", "nCount_RNA", "percent_mito", "percent_ribo", "percent_hb")
 
 VlnPlot(data.filt, group.by = "orig.ident", features = feats, pt.size = 0.1, ncol = 3) +
   NoLegend()
-
-#filtered cell cycle scores
 
 data.filt = NormalizeData(data.filt)
 data.filt <- CellCycleScoring(object = data.filt, g2m.features = cc.genes$g2m.genes,
                               s.features = cc.genes$s.genes)
 VlnPlot(data.filt, features = c("S.Score", "G2M.Score"), group.by = "orig.ident",
         ncol = 4, pt.size = 0.1)
-
-#doublet detection
 suppressMessages(require(DoubletFinder))
 
 data.filt = FindVariableFeatures(data.filt, verbose = F)
@@ -69,11 +44,9 @@ data.filt = ScaleData(data.filt, vars.to.regress = c("nFeature_RNA", "percent_mi
                       verbose = F)
 data.filt = RunPCA(data.filt, verbose = F, npcs = 20)
 data.filt = RunUMAP(data.filt, dims = 1:10, verbose = F)
-
-#paramSweep
 nExp <- round(ncol(data.filt) * 0.04)  # expect 4% doublets
 data.filt <- doubletFinder_v3(data.filt, pN = 0.25, pK = 0.09, nExp = nExp, PCs = 1:10)
-# name of the DF prediction can change, so extract the correct column name.
+
 DF.name = colnames(data.filt@meta.data)[grepl("DF.classification", colnames(data.filt@meta.data))]
 cowplot::plot_grid(ncol = 2, DimPlot(data.filt, group.by = "orig.ident") + NoAxes(),
                    DimPlot(data.filt, group.by = DF.name) + NoAxes())
@@ -84,9 +57,8 @@ dim(data.filt)
 umap = cbind("Barcode" = rownames(Embeddings(object = data.filt, reduction = "umap")), Embeddings(object = data.filt, reduction = "umap"))
 write.table(umap, file="/Users/Li/Desktop/R_scrna_seq/results/seurat_BlimpVSctl.csv", sep = ",", quote = F, row.names = F, col.names = T)
 save(data.filt, umap, file = "seurat_BlimpVSctl.Rdata")
-
+### to make Figure Figure S3a-c & Figure 3a-f
 load(file = "seurat_BlimpVSctl.Rdata")
-## randomly making a batch id data.frame
 batch_ids <- data.frame(barcode = rownames(data.filt@meta.data), 
                         batch_id = sample(0:2, NROW(data.filt@meta.data), replace = TRUE),
                         stringsAsFactors = FALSE)
@@ -128,7 +100,7 @@ sce.m <- RunPCA(sce.m, features = VariableFeatures(object = sce.m))
 
 sce.m <- FindNeighbors(sce.m, dims = 1:6)
 sce.m <- FindClusters(sce.m, resolution = 1 )
-# Look at cluster IDs of the first 5 cells
+
 head(Idents(sce.m), 2)
 table(sce.m$seurat_clusters) 
 sce.m <- RunUMAP(sce.m, dims = 1:6)
@@ -141,14 +113,7 @@ genes_to_check_fomzb = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1')
 DotPlot(sce.m, group.by = 'seurat_clusters',
         features = unique(genes_to_check_fomzb)) + RotatedAxis()
 FeaturePlot(sce.m, features = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1'))
-genes_to_check_Top = c('Fcer2a','Vpreb3','H3f3a','Tmem108','Ighd','Il4i1','Junb','Rpl35a','Rps29','Limd2',
-                       'Rps15a', 'Rps16','Rps7','Rpl9','Ebf1','Rpl37a','Rps27','Fth1','Dusp2',
-                       'S100a6','Apoe','Psap','Napsa','Nfatc1','Ptprj','Ms4a1','Cd9','Ighm','Cyp4f18',
-                       'Ighg2c','Cxcr3','Ighg2b','Tbx21','Ass1','Fah','Cd52','Anxa2','Bhlhe41','Scimp','Cd86',
-                       'Tnfrsf17','Eaf2','Jchain','Derl3','Cd28','Plpp5','Sdc1','Tent5c','Ccr10','Tigit',
-                       'Ifi214','Ifit3','Ifit2','Usp18','Irf7','Ifi208','Oasl2','Irgm1','Oasl1','Ifi47','Tor3a')
-DotPlot(sce.m, group.by = 'seurat_clusters',
-        features = unique(genes_to_check_Top)) + RotatedAxis() + theme(axis.text.x = setting) + scale_color_gradient2(low = "blue", mid = "white", high = "red")
+
 df.sub.m.markers <- FindAllMarkers(object = sce.m, min.pct = 0.25, thresh.use = 0.25)
 write.table(df.sub.m.markers, file="/Users/Li/Desktop/R_scrna_seq/results/seurat_df_sub_m_markers_BlimpVSctl.csv", sep = ",", quote = F, row.names = F, col.names = T)
 df <- read.table("/Users/Li/Desktop/R_scrna_seq/results/sub.m/seurat_df_sub_m_markers_BlimpVSctl.csv", sep = ",", fill = TRUE, col.names=c("p_val","avg_log2FC","pct.1","pct.2","p_val_adj","cluster","gene"), header=T)
@@ -264,9 +229,16 @@ p7 <- p6+
     legend.text = element_text(size = 15)
   )
 p7
-####to make Figure Figure 3a-f
+genes_to_check_Top = c('Fcer2a','Vpreb3','H3f3a','Tmem108','Ighd','Il4i1','Junb','Rpl35a','Rps29','Limd2',
+                       'Rps15a', 'Rps16','Rps7','Rpl9','Ebf1','Rpl37a','Rps27','Fth1','Dusp2',
+                       'S100a6','Apoe','Psap','Napsa','Nfatc1','Ptprj','Ms4a1','Cd9','Ighm','Cyp4f18',
+                       'Ighg2c','Cxcr3','Ighg2b','Tbx21','Ass1','Fah','Cd52','Anxa2','Bhlhe41','Scimp','Cd86',
+                       'Tnfrsf17','Eaf2','Jchain','Derl3','Cd28','Plpp5','Sdc1','Tent5c','Ccr10','Tigit',
+                       'Ifi214','Ifit3','Ifit2','Usp18','Irf7','Ifi208','Oasl2','Irgm1','Oasl1','Ifi47','Tor3a')
+DotPlot(sce.m, group.by = 'seurat_clusters',
+        features = unique(genes_to_check_Top)) + RotatedAxis() + theme(axis.text.x = setting) + scale_color_gradient2(low = "blue", mid = "white", high = "red")
 
-###
+### VDJ combined with scRNAseq
 CTL <- read.csv("/Users/Li/Desktop/VDJ/CTRL_03idCTRLBCELLtyVDJdt111522/CTL_filtered_contig_annotations.csv")
 BLIMP1 <- read.csv("/Users/Li/Desktop/VDJ/BLIMP_01idBLIMPBCELLtyVDJdt111122/BLIMP_filtered_contig_annotations.csv")
 
@@ -332,7 +304,6 @@ DimPlot(sce.m, group.by = "cloneType", split.by = "orig.ident") +
   scale_color_manual(values = colorblind_vector(3), na.value="grey") + 
   theme(plot.title = element_blank())
 ###to make Figure 4a,b
-
 ###
 data <- GetAssayData(sce.m, assay = 'RNA', layer ='counts')
 cell_metadata <- sce.m@meta.data
