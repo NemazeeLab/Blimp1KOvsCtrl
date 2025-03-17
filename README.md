@@ -105,9 +105,9 @@ table(sce.m$seurat_clusters) <br>
 sce.m <- RunUMAP(sce.m, dims = 1:6)<br>
 DimPlot(sce.m, reduction = 'umap') #Figure 3a<br>
 DimPlot(sce. m, group.by = "orig.ident") + NoAxes() #Figure 3b<br>
-> table(sce.m$orig.ident)<br>
+table(sce.m$orig.ident)<br>
 table(Idents(sce.m))<br>
-> table(Idents(sce.m),sce.m$orig.ident) #Figure 3c<br>
+table(Idents(sce.m),sce.m$orig.ident) #Figure 3c<br>
 genes_to_check_fomzb = c('Ighd', 'Ccr7', 'Ighm', 'Mzb1')<br>
 DotPlot(sce.m, group.by = 'seurat_clusters',
         features = unique(genes_to_check_fomzb)) + RotatedAxis()<br>
